@@ -8,19 +8,18 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 60000, // Increased timeout for summarization
 });
 
-// Error handling interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.detail || 'An error occurred';
+    const message = error.response?.data?.detail || error.message || 'An error occurred';
     toast.error(message);
     return Promise.reject(error);
   }
 );
 
-// Papers
 export const getPapers = async () => {
   const response = await api.get('/papers/');
   return response.data;
@@ -50,12 +49,11 @@ export const deletePaper = async (paperId) => {
   return response.data;
 };
 
-// Chat
-export const askQuestion = async (question, paperIds) => {
+export const askQuestion = async (question, paperIds, topK = 5) => {
   const response = await api.post('/chat/ask', {
     question,
     paper_ids: paperIds,
-    top_k: 5,
+    top_k: topK,
   });
   return response.data;
 };
@@ -68,12 +66,11 @@ export const comparePapers = async (question, paperIds) => {
   return response.data;
 };
 
-export const summarizePaper = async (paperId) => {
-  const response = await api.post(`/chat/summarize?paper_id=${paperId}`);
+export const summarizePaper = async (paperId, maxLength = 500) => {
+  const response = await api.post(`/chat/summarize?paper_id=${paperId}&max_length=${maxLength}`);
   return response.data;
 };
 
-// Highlights
 export const createHighlight = async (data) => {
   const response = await api.post('/highlights/create', data);
   return response.data;

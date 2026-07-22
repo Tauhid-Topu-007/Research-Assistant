@@ -11,9 +11,10 @@ from app.core.pdf_processor import PDFProcessor
 from app.core.rag_engine import RAGEngine
 from app.config import settings
 
-logger = logging.getLogger(__name__)
-
+# Create router FIRST
 router = APIRouter(prefix="/api/papers", tags=["papers"])
+
+logger = logging.getLogger(__name__)
 pdf_processor = PDFProcessor()
 rag_engine = RAGEngine()
 
@@ -50,7 +51,7 @@ async def upload_paper(
             title=title or processed_data["metadata"].get("title", file.filename),
             authors=authors.split(',') if authors else [processed_data["metadata"].get("author", "Unknown")],
             abstract=processed_data["text"][:1000] if processed_data["text"] else "",
-            filename=file.filename,
+            filename=filename,  # Store the saved filename
             file_path=file_path,
             total_pages=processed_data["total_pages"],
             metadata_json=processed_data["metadata"]
@@ -80,7 +81,8 @@ async def upload_paper(
         
         # Create vector embeddings
         try:
-            rag_engine.create_vector_store(processed_data["pages"][0]["chunks"], paper.id)
+            if processed_data["pages"] and processed_data["pages"][0]["chunks"]:
+                rag_engine.create_vector_store(processed_data["pages"][0]["chunks"], paper.id)
         except Exception as e:
             logger.warning(f"Vector store creation warning: {e}")
         
@@ -88,6 +90,7 @@ async def upload_paper(
             "message": "Paper uploaded successfully",
             "paper_id": paper.id,
             "title": paper.title,
+            "filename": filename,
             "total_pages": paper.total_pages
         }
         
@@ -114,11 +117,26 @@ async def get_papers(
             "title": p.title,
             "authors": p.authors,
             "abstract": p.abstract,
+            "filename": p.filename,
             "upload_date": p.upload_date.isoformat() if p.upload_date else None,
             "total_pages": p.total_pages
         }
         for p in papers
     ]
+
+@router.get("/files")
+async def list_uploaded_files():
+    """List all uploaded files"""
+    try:
+        if os.path.exists(settings.UPLOAD_DIR):
+            files = os.listdir(settings.UPLOAD_DIR)
+            return {
+                "files": files,
+                "count": len(files)
+            }
+        return {"files": [], "count": 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{paper_id}")
 async def get_paper(

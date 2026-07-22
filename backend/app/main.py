@@ -36,7 +36,7 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.PROCESSED_DIR, exist_ok=True)
 os.makedirs(settings.VECTOR_DB_PATH, exist_ok=True)
 
-# Mount static files
+# Mount static files - Make sure the path is correct
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # Include routers
